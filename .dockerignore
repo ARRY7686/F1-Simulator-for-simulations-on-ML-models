@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+cache/
+race_cache/
+race_data.json
+*.jsonl

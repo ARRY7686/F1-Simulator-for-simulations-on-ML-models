@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# FastF1 raw cache (large SQLite files — do NOT commit)
+cache/
+race_cache/cache/
+
+# Local race data (fetched on-demand, not part of source)
+race_cache/
+race_data.json
