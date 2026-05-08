@@ -1,0 +1,28 @@
+app = "f1-simulator"
+primary_region = "sin"   # Singapore — change to closest: lhr=London, iad=Virginia, fra=Frankfurt
+
+[build]
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port       = 8080
+  force_https         = true
+  auto_stop_machines  = false   # keep alive — no sleep on free tier
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "512mb"
+
+# Persistent volume for processed race JSON (fast, small)
+[[mounts]]
+  source      = "race_cache"
+  destination = "/app/race_cache"
+
+# Persistent volume for FastF1 raw telemetry cache (large SQLite)
+[[mounts]]
+  source      = "ff1_cache"
+  destination = "/app/cache"
