@@ -12,6 +12,6 @@ COPY fetch_data.py serve.py simulator.html build_tracks.py track_layouts.json ./
 # Persistent cache directories (mount as Fly.io volumes at /app/cache and /app/race_cache)
 RUN mkdir -p cache race_cache
 
-EXPOSE 8080
+EXPOSE 7860
 
 CMD ["python", "serve.py"]

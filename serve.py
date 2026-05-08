@@ -12,7 +12,7 @@ import json
 import urllib.parse
 from pathlib import Path
 
-PORT     = int(os.environ.get("PORT", 3000))
+PORT     = int(os.environ.get("PORT", 7860))
 BASE     = Path(__file__).parent
 RCACHE   = BASE / "race_cache"   # processed race JSON files
 FF1C     = BASE / "cache"        # FastF1 raw telemetry cache

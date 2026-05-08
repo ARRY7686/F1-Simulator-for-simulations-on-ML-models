@@ -1,3 +1,13 @@
+---
+title: F1 Race Simulator
+emoji: 🏎️
+colorFrom: red
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # F1 Race Simulator
 
 A browser-based Formula 1 race simulator that replays real telemetry data using [FastF1](https://github.com/theOehrly/Fast-F1). Watch every car move around the circuit in real-time, follow drivers, track tyre strategies, and see pit stops — all visualised directly in the browser.
