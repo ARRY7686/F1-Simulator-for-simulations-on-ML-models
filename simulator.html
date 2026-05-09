@@ -1067,22 +1067,30 @@ function buildTrackPath() {
   }
   trackP2D.closePath();
 
-  // Build pit lane paths from telemetry during each driver's pit windows
+  // Build pit lane Path2D — use pre-built static path from raceData.pit_lane
+  // (built by build_tracks.py from OpenF1; works for all circuits/years).
+  // Falls back to extracting from telemetry if static data is missing.
   pitP2D = [];
-  const seen = new Set(); // deduplicate by rounding to 20m grid to avoid redundant paths
-  for (const drv of Object.values(raceData.drivers)) {
-    if (!drv.pits || drv.pits.length === 0) continue;
-    for (const [piIn, piOut] of drv.pits) {
-      // Collect telemetry points during pit lane transit (add small buffer)
-      const seg = drv.positions.filter(p => p[0] >= piIn - 0.5 && p[0] <= piOut + 0.5);
-      if (seg.length < 3) continue;
-      // Check if this pit path is substantially different from one we already have
-      const key = `${Math.round(seg[0][1]/20)},${Math.round(seg[0][2]/20)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+  const pitSrc = raceData.pit_lane;   // [[x,y],...] or null
+  if (pitSrc && pitSrc.length >= 3) {
+    const path = new Path2D();
+    path.moveTo(pitSrc[0][0], pitSrc[0][1]);
+    for (let i = 1; i < pitSrc.length; i++) path.lineTo(pitSrc[i][0], pitSrc[i][1]);
+    pitP2D.push(path);
+  } else {
+    // Fallback: extract from telemetry (uses longest pit-stop transit found)
+    let bestSeg = null;
+    for (const drv of Object.values(raceData.drivers)) {
+      if (!drv.pits || drv.pits.length === 0) continue;
+      for (const [piIn, piOut] of drv.pits) {
+        const seg = drv.positions.filter(p => p[0] >= piIn - 0.5 && p[0] <= piOut + 0.5);
+        if (seg.length >= 3 && (!bestSeg || seg.length > bestSeg.length)) bestSeg = seg;
+      }
+    }
+    if (bestSeg) {
       const path = new Path2D();
-      path.moveTo(seg[0][1], seg[0][2]);
-      for (let i = 1; i < seg.length; i++) path.lineTo(seg[i][1], seg[i][2]);
+      path.moveTo(bestSeg[0][1], bestSeg[0][2]);
+      for (let i = 1; i < bestSeg.length; i++) path.lineTo(bestSeg[i][1], bestSeg[i][2]);
       pitP2D.push(path);
     }
   }
@@ -1116,21 +1124,28 @@ function buildMiniMap() {
   }
   mmPath.closePath();
 
-  // Pit lane on minimap — rebuild from raw positions using minimap scale
+  // ONE pit lane path on minimap — use static raceData.pit_lane
   mmPitPaths = [];
-  // (Note: pitP2D is in world coords; we re-derive scaled paths here)
-  const seen2 = new Set();
-  for (const drv of Object.values(raceData.drivers)) {
-    if (!drv.pits || drv.pits.length === 0) continue;
-    for (const [piIn, piOut] of drv.pits) {
-      const seg = drv.positions.filter(p => p[0] >= piIn - 0.5 && p[0] <= piOut + 0.5);
-      if (seg.length < 3) continue;
-      const key = `${Math.round(seg[0][1]/20)},${Math.round(seg[0][2]/20)}`;
-      if (seen2.has(key)) continue;
-      seen2.add(key);
+  const pitSrc2 = raceData.pit_lane;
+  if (pitSrc2 && pitSrc2.length >= 3) {
+    const mp = new Path2D();
+    mp.moveTo(pitSrc2[0][0]*sc+ox, -pitSrc2[0][1]*sc+oy);
+    for (let i = 1; i < pitSrc2.length; i++) mp.lineTo(pitSrc2[i][0]*sc+ox, -pitSrc2[i][1]*sc+oy);
+    mmPitPaths.push(mp);
+  } else {
+    // Fallback: extract from telemetry
+    let bestSeg2 = null;
+    for (const drv of Object.values(raceData.drivers)) {
+      if (!drv.pits || drv.pits.length === 0) continue;
+      for (const [piIn, piOut] of drv.pits) {
+        const seg = drv.positions.filter(p => p[0] >= piIn - 0.5 && p[0] <= piOut + 0.5);
+        if (seg.length >= 3 && (!bestSeg2 || seg.length > bestSeg2.length)) bestSeg2 = seg;
+      }
+    }
+    if (bestSeg2) {
       const mp = new Path2D();
-      mp.moveTo(seg[0][1]*sc+ox, -seg[0][2]*sc+oy);
-      for (let i = 1; i < seg.length; i++) mp.lineTo(seg[i][1]*sc+ox, -seg[i][2]*sc+oy);
+      mp.moveTo(bestSeg2[0][1]*sc+ox, -bestSeg2[0][2]*sc+oy);
+      for (let i = 1; i < bestSeg2.length; i++) mp.lineTo(bestSeg2[i][1]*sc+ox, -bestSeg2[i][2]*sc+oy);
       mmPitPaths.push(mp);
     }
   }
@@ -1285,6 +1300,20 @@ function drawTrack() {
   ctx.strokeStyle='rgba(255,255,255,0.13)'; ctx.lineWidth=0.7*sw;
   ctx.shadowColor='rgba(255,255,255,0.18)'; ctx.shadowBlur=3;
   ctx.stroke(trackP2D);
+
+  // Pit lane — amber line on top of the track
+  if (pitP2D.length > 0) {
+    ctx.lineCap = ctx.lineJoin = 'round';
+    for (const p of pitP2D) {
+      ctx.strokeStyle = 'rgba(10,10,20,1)'; ctx.lineWidth = 11*sw;
+      ctx.shadowBlur = 0;
+      ctx.stroke(p);
+      ctx.strokeStyle = 'rgba(255,165,0,0.7)'; ctx.lineWidth = 3.5*sw;
+      ctx.shadowColor = 'rgba(255,165,0,0.6)'; ctx.shadowBlur = 8;
+      ctx.stroke(p);
+    }
+  }
+
   ctx.shadowBlur=0;
   setScreenTx();
 }

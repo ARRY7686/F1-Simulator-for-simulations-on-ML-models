@@ -69,10 +69,13 @@ def fetch_race_data(
 
     driver_data: dict = {}
     track_points: list = []
+    pit_lane: list | None = None
 
-    # ── Load pre-built track layout if available ──────────────────────────────
+    # ── Load pre-built track layout (and pit lane) if available ───────────────
     # build_tracks.py pre-generates layouts for all 24 circuits keyed by
     # slug(EventName), avoiding broken telemetry-derived outlines entirely.
+    # Format is now: {slug: {"track": [[x,y],...], "pit": [[x,y],...] or null}}
+    # Old list-only format is still handled for backwards compatibility.
     def _slug(s: str) -> str:
         return s.lower().replace(" ", "_").replace("/", "_").replace("'", "")
 
@@ -83,8 +86,15 @@ def fetch_race_data(
                 _layouts = json.load(_lf)
             _key = _slug(grand_prix)
             if _key in _layouts:
-                track_points = _layouts[_key]
-                progress_cb(f"  Track layout: {len(track_points)} pts (pre-built)")
+                _entry = _layouts[_key]
+                if isinstance(_entry, dict):
+                    track_points = _entry.get("track") or []
+                    pit_lane     = _entry.get("pit")  or None
+                else:
+                    # Old format: entry is just the track points list
+                    track_points = _entry
+                progress_cb(f"  Track layout: {len(track_points)} pts (pre-built), "
+                            f"pit lane: {'yes' if pit_lane else 'none'}")
         except Exception:
             pass
     # ─────────────────────────────────────────────────────────────────────────
@@ -249,6 +259,7 @@ def fetch_race_data(
         "year":          year,
         "session":       session_type,
         "track":         track_points,
+        "pit_lane":      pit_lane,
         "drivers":       driver_data,
         "t_start":       round(min(all_t), 2),
         "t_end":         round(max(all_t), 2),
